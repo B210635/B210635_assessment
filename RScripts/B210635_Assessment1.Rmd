@@ -1,0 +1,207 @@
+---
+title: "Working with Data types and structures in Python and R Assessment#2 B210635"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **Load packages**  
+
+Let’s load the packages needed for this script.
+
+```{r a, echo=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse) #This is a collection of R packages needed to tidy the data.
+library(NHSRdatasets) #This is the package needed to load the NHSR data sets.
+library(here) #This package is used to build path to the files.
+library(knitr) #This package is used to integrate code into text documents in Rmarkdown. 
+library(scales) #This package provides the internal scaling infrastructure to ggplot2.
+library(lubridate) #This package is for manipulating dates in R. 
+library(dataMeta) # This package will be used to construct the data dictionary
+library(caret) #This package contains a set of functions that attempt to 
+#streamline the process for creating predictive models. 
+```
+
+# **Loading NHSR Dataset** 
+
+Five raw datasets contained in the NHSR data will be loaded.
+The **ae_attendances** data refer to NHS England accident and emergency attendances and admissions.
+The **LOS_model** data refer to the length of stay in hospital data generated to learn generalised linear models (GLM).
+The **ons_mortality** data contain provisional counts of the number of deaths registered in England and Wales.
+The **Stranded_patient** contain data on patients flagged as having a greater than 7 day length of stay
+The **synthetic_news_data** contain data generated to track early clinical deterioration in adult 
+patients for the purpose of improving patient outcomes 
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+data(ae_attendances) #Load the ae_attendances data.
+data(LOS_model) #Load the LOS_model data.
+data(ons_mortality) #Load the ons_mortality data.
+data(stranded_data) #Load the stranded_data.
+data(synthetic_news_data) #Load the synthetic_news_data.
+```
+
+
+## **Archive all raw data sets to the RawData folder**  
+
+```{r q,message = FALSE, warning = FALSE}
+#Create raw data object
+ae <- ae_attendances # save the ae_attendances dataset as 'ae'
+LOS <- LOS_model # save the LOS_model data set as 'LOS'
+ons <- ons_mortality #save the ons_mortality dataset as 'ons'
+stranded <- stranded_data # save the stranded_data as 'stranded'
+synthetic_news <- synthetic_news_data # save the synthetic_news_data as the object 'synthetic_news
+
+#Save all raw data objects as CSV files to RawData folder
+write_csv(ae, here("RawData", "ae_attendances.csv"))
+write_csv(LOS, here("RawData", "LOS_model.csv"))
+write_csv(ons, here("RawData", "ons_mortality.csv"))
+write_csv(stranded, here("RawData", "stranded_data.csv"))
+write_csv(synthetic_news, here("RawData", "synthetic_news_data.csv"))
+
+```
+
+##**Create subset data for admissions burden in Emergency departments in England**  
+The ae data will be subsetted for admissions in emergency departments
+```{r}
+ae1 <- rowid_to_column(ae, "index")%>% filter(type==1)%>% select(index, org_code, period, attendances, breaches)%>%
+  # Set the period column to show in month-year format
+  mutate_at(vars(period), format, "%b-%y") %>% 
+  # Set the numeric columns to have a comma at the 1000's place
+  mutate_at(vars(attendances, breaches), comma) 
+ae1 <- data.frame(ae1)
+```
+
+## **Let's save provisional subsetted ae_attendances data for admissions in emergency facilities to the 'Data' folder**
+```{r}
+write_csv(ae1, here("Data", "ae_attendances_admissions_emergency.csv"))
+```
+
+
+## **Separating provisional ae_attendances_admissions_emergency data into training and testing sets**  
+
+This is to split the subsetted data into test and training data sets.
+First, we check the number of rows in the dataset and next calculate the proportion to assign to the training data
+```{r x,message = FALSE, warning = FALSE}
+nrow(ae1) #rows of data
+prop<-(1-(15/nrow(ae1))) #calculate proportion to assign
+print(prop)
+```
+Extract training data.
+```{r z,message = FALSE, warning = FALSE}
+set.seed(333)
+#Partitioning the raw data into the test and training data.
+trainIndex <- createDataPartition(ae1$index, p = prop, 
+                                  list = FALSE, 
+                                  times = 1)
+head(trainIndex)
+# All records that are in the trainIndex are assigned to the training data.
+ae1Train <- ae1[ trainIndex,]
+nrow(ae1Train)
+```
+There are 12,753 records in your training data. That is a large dataset!
+
+
+## Save the train data to the folder 'Data'
+```{r ab,message = FALSE, warning = FALSE}
+write_csv(ae1Train, here("Data", "ae_attendances_admissions_emergency_train.csv"))
+```
+
+ Extract test data
+## All records that are not in the trainIndex (`-trainIndex`) are assigned to the test data.
+```{r ac,message = FALSE, warning = FALSE}
+ae1Test  <- ae1[-trainIndex,]
+nrow(ae1Test)
+```
+To aside the first record from the test data.
+```{r ad,message = FALSE, warning = FALSE}
+ae1TestMarker  <- ae1Test[1,]
+```
+
+## Save the marker test data to the folder 'Data'
+```{r af,message = FALSE, warning = FALSE}
+write_csv(ae1TestMarker, here("Data", "ae_attendances_admissions_emergency_marker.csv"))
+```
+
+## To set aside the remaining records to test (or collect with) the data-capture tool.
+```{r ag,message = FALSE, warning = FALSE}
+ae1Test  <- ae1Test[2:nrow(ae1Test),]
+```
+
+## To save the ae_attendances_admissions_emergency test data to the folder 'Data'
+```{r ai,message = FALSE, warning = FALSE}
+write_csv(ae1Test, here("Data", "ae_attendances_admissions_emergency_test.csv"))
+```
+
+
+#**Data dictionary**  
+
+```{r}
+#Variable description of subsetted ae_attendances_admissions_emergency data
+head(ae1)
+variable_description <- c("The index column that allows us to link the data collected to the original ae_attendances data in the 'RawData' folder.", "The Organisation data service (ODS) code for the organisation.", "The number of attendances for this department type at this organisation for this month.","The number of attendances that resulted in an admission to the hospital.","The number of attendances that breached the four-hour target.")
+print(variable_description)
+```
+## Variable types
+```{r}
+# view type of variables in the data set
+glimpse(ae1)
+
+#Use 0 to represent quantitative variable types and 1 to represent fixed values
+variable_type <- c(0, 1, 1, 0, 0)
+print(variable_type)
+```
+
+## To construct a link between the ae1 dataset and the data dictionary.
+```{r}
+linker<-build_linker(ae1, variable_description, variable_type)
+print(linker)
+```
+
+## construct dictionary
+```{r}
+dictionary <- build_dict(my.data = ae1, linker = linker)
+glimpse(dictionary)
+```
+
+## Create main_string for attributes
+```{r}
+main_string <- "This data describes the NHS England accident and emergency (A&E) attendances and breaches of four-hour wait time target for emergency departments."
+main_string
+```
+
+## Incorporate attributes as metada 
+```{r}
+complete_ae1 <- incorporate_attr(my.data = ae1, data.dictionary = dictionary,
+main_string = main_string)
+
+#Change the author name
+attributes(complete_ae1)$author[1]<-"B210635"
+complete_ae1
+
+#attributes of ae1 data
+attributes(complete_ae1)
+```
+
+
+##Save the ae1 data with attributes
+
+```{r}
+save_it(complete_ae1, here("RawData", "complete_ae1"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

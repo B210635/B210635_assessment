@@ -1,0 +1,37 @@
+---
+title: "MyFirst"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **Load packages**  
+
+Let’s load the packages needed for this script.
+
+```{r a,message = FALSE, warning = FALSE}
+library(tidyverse)
+```
+
+
+# **Data dictionary** 
+
+Here I will capture the codes for my data dictionary
+```{r }
+
+```  
+
+
+# **Data capture tool (Python)** 
+
+```{r }
+
+```
+
+# **Loading NHANES Dataset** 
+
+```{r}
+library(NHSRdatasets)
+```
