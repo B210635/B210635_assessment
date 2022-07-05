@@ -119,6 +119,11 @@ ggsave("AdmissionsTrend.png")
 
 # *The data capture tool*  
 
+```{r include=FALSE}
+# Link to the data capture tool
+# https://github.com/B210635/B210635_assessment/blob/master/IPynbScripts/Working%20with%20Data%20types%20and%20structures%20in%20Python%20and%20R%20Assessment%232%20B210635.ipynb 
+```
+
 In order to develop the data capture tool, the provisional dataset was separated into training and testing datasets. Most of the dataset (*n*=4,920) was assigned to the training dataset while 12 records were assigned to the test dataset to reduce the time spent for data capture. One of the 12 rows from the test dataset was set aside for use by the markers to test and evaluate the data-capture tool.
 
 The data capture tool was developed in Python using interactive jupyter widgets to collect the data. Widget is an intuitive feature consisting of graphical user interface elements, such as a button, dropdown menus, or textboxes to collect or input user data. The test dataset used for data collection consisted of eleven rows and four columns or variables with data types as follows: index (integer), org_code (string), period (date), and admission (integer). Because consent is crucial to ensure data protection compliance in line with data regulations standards, a boolean variable ‘consent’ was added to the data capture tool using a Boolean widget (checkbox widget) with values as ‘True’ or ‘False’. True corresponds to consent provided by the end-user to analyze and share the collect dataset. A datepicker widget was used to collect data for the period variable as date. The org_code variable was displayed as list and selection widgets were used to select the org_code value from the list. Because the admissions variable is an integer, the *'IntText widget'* was used to input the value. Eleven iterations were performed for each variable to collect the data captured by the Juypter widgets to an empty data frame. 
