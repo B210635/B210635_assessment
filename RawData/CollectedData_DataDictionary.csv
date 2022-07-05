@@ -1,0 +1,25 @@
+variable_name,variable_description,variable_options
+admissions,The number of attendances that resulted in an admission to the emergency department.,754 to 6522
+consent,The consent from the end-user to process and share the data collected with the data capture tool.,TRUE
+index,The index column that allows us to link the data collected to the original ae_attendances data in the 'RawData' folder.,2826 to 12463
+org_code,The Organisation data service (ODS) code for the organisation.,RGT
+ , ,RM1
+ , ,RRK
+ , ,RJN
+ , ,RNZ
+ , ,RQ3
+ , ,RBL
+ , ,R1K
+ , ,RPA
+ , ,RA3
+ , ,RDE
+period,The month for this type of activity.,16983
+ , ,16892
+ , ,17501
+ , ,17471
+ , ,17379
+ , ,17287
+ , ,17956
+ , ,17814
+ , ,17652
+ , ,17622
