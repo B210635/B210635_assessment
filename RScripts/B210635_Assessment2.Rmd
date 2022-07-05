@@ -1,0 +1,271 @@
+---
+title: "Working with Data types and structures in Python and R Assessment#2 B210635"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Link to GitHub repository
+```{r}
+"https://github.com/B210635/B210635_assessment"
+```
+
+
+# **Load packages**  
+
+These packages will be uploaded because they are needed for the scripts.
+
+```{r a, echo=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse) #This is a collection of R packages needed to tidy the data.
+library(NHSRdatasets) #This is the package needed to load the NHSR data sets.
+library(here) #This package is used to build path to the files.
+library(knitr) #This package is used to integrate code into text documents in Rmarkdown. 
+library(scales) #This package provides the internal scaling infrastructure to ggplot2.
+library(lubridate) #This package is for manipulating dates in R. 
+library(dataMeta) # This package will be used to construct the data dictionary
+library(caret) #This package contains a set of functions that attempt to 
+#streamline the process for creating predictive models. 
+```
+
+# **Loading NHS England accident and emergency attendances and admissions dataset**
+
+The NHS England accident and emergency attendances and admissions (ae_attendances) dataset has been chosen for the analysis to explore the monthly burden of admissions in emergency departments across England. The dataset contains reported attendances, four-hour breaches and admissions for all A&E departments in England for the years 2016/17 through 2018/19 (Apr-Mar).
+
+Emergency departments are critical in life-saving processes; thus, health decision-makers need to rationally allocate resources (human, medical supplies, and logistics) to ensure efficiency and economy. Exploring the monthly trend in the burden of emergency admissions is a useful way of demonstrating evidence-based approach to resource allocation during varying periods of the year.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+data(ae_attendances) #Load the ae_attendances data.
+
+```
+
+
+## **Archive the raw dataset to the RawData folder**  
+
+```{r q,message = FALSE, warning = FALSE}
+#Create raw data object
+ae <- ae_attendances # save the ae_attendances dataset as 'ae'
+
+#Save all raw data objects as CSV files to RawData folder
+write_csv(ae, here("RawData", "ae_attendances.csv"))
+
+```
+
+
+## **Create a provisional subset dataset for admissions burden in Emergency departments in England**  
+
+Because the report focuses on the monthly burden of emergency admissions across all organizations in England,the following variables were selected from the original dataset: org_code, period, and admissions for analysis. An index column was first added to the original dataset for future use in the development of the data capture tool. The emergency department was filtered from the ‘type’ variable. 
+
+```{r}
+# Create subset data for admissions burden in Emergency departments in England and store it as 'ae1'**  
+
+ae1 <- rowid_to_column(ae, "index") %>%  # index original dataset
+  filter(type==1)%>%   # filter original dataset to select only rows containing emergency department
+   dplyr::select(index, org_code, period, admissions)   # select the pertinent variables
+```
+
+
+## Explore the structure of the accident and emergency attendances and admissions provisional dataset
+
+The resulting dataset contains 4,932 rows with four columns corresponding to four variables as follows: index stored as integer, org_code stored as factor, period stored as date, and admissions stored as numeric.
+
+```{r echo=TRUE}
+str(ae1) #use the 'str' function to explore structure of the provisional dataset
+```
+
+## **Save provisional subset dataset to the 'Data' folder as CSV file**
+```{r}
+write_csv(ae1, here("Data", "ae_attendances_admissions_emergency.csv"))
+```
+
+## **Show monthly trend of attendances that result in admissions across England at Emergency departments**
+
+The results showed overall increasing trend despite monthly fluctuations in the number of admissions at emergency departments. Noticeable dips were seen yearly during the month of January.
+
+```{r echo=TRUE, fig.width=10, message=FALSE, warning=FALSE}
+ # Graph of monthly trend of emergency admissions**
+
+Emergency_AdmissionsTrend <- ae1%>%
+  group_by(period)%>%
+  summarise(admissions = sum(admissions))%>% # sum the number of admissions by period of admission
+  ggplot(aes(period, admissions)) +
+  geom_line(color = "darkcyan")+
+   scale_x_date(date_breaks = "30 day", date_labels = "%b-%y", expand=c(0,2))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 0.4, vjust = 0.5, size = 10, color = "Black"))+
+  scale_y_continuous(breaks = seq(0,500000, 10000))+
+  geom_point(color = "darkcyan") +
+  labs(x = "Month of admission",
+       y = "number of admissions",
+       title = "NHS England accident and emergency admissions, March 2016 - February 2019",
+       caption = "Source: NHSRdatasets")
+
+Emergency_AdmissionsTrend
+
+ggsave("Emergency_AdmissionsTrend.png") # to save the graph to working directory
+```
+
+
+## **Separating provisional ae_attendances_admissions_emergency data into training and testing sets**  
+
+This is to split the subsetted data into test and training data sets.
+First, we check the number of rows in the dataset and next calculate the proportion to assign to the training data
+
+```{r x,message = FALSE, warning = FALSE}
+nrow(ae1) #rows of data
+prop<-(1-(15/nrow(ae1))) #calculate proportion to assign
+print(prop)
+```
+## Extracting the training data.
+
+```{r z, message=FALSE, warning=FALSE}
+set.seed(333)
+
+#Partitioning the raw data into the test and training data.
+trainIndex <- createDataPartition(ae1$index, p = prop, 
+                                  list = FALSE, 
+                                  times = 1)
+head(trainIndex)
+# All records that are in the trainIndex are assigned to the training data.
+ae1Train <- ae1[ trainIndex,]
+nrow(ae1Train)
+```
+There are 4,920 records in the training data. That is a large dataset!
+
+## Save the training dataset to the folder 'Data'
+
+```{r ab,message = FALSE, warning = FALSE}
+write_csv(ae1Train, here("Data", "ae_attendances_admissions_emergency_train.csv"))
+```
+
+## Extract the test data
+
+All records that are not in the trainIndex (`-trainIndex`) are assigned to the test data.
+There are 12 records in the training dataset.
+
+```{r ac,message = FALSE, warning = FALSE}
+ae1Test  <- ae1[-trainIndex,]
+nrow(ae1Test)
+```
+## Put aside the first record from the test data for markers.
+
+```{r ad, echo=TRUE, message=FALSE, warning=FALSE}
+ae1TestMarker  <- ae1Test[1,]
+```
+
+## Save the marker test data to the folder 'Data'
+```{r af, echo=TRUE, message=FALSE, warning=FALSE}
+write_csv(ae1TestMarker, here("Data", "ae_attendances_admissions_emergency_marker.csv"))
+```
+
+## To set aside the remaining records to test (or collect with) the data-capture tool.
+```{r ag, echo=TRUE, message=FALSE, warning=FALSE}
+ae1Test  <- ae1Test[2:nrow(ae1Test),]
+```
+
+## To save the ae_attendances_admissions_emergency test data to the folder 'Data'
+```{r ai, echo=TRUE, message=FALSE, warning=FALSE}
+write_csv(ae1Test, here("Data", "ae_attendances_admissions_emergency_test.csv"))
+```
+
+
+#**Data dictionary**  
+
+This is to develop a data dictionary of the data collected using the data capture tool to provide detailed information about the variables and features of the collected dataset including its metadata. First, the data collected from the Python Jupyter notebook is loaded.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Load the dataset that was collected in python and stored in the Raw data folder.
+CollectedData=read_csv(here("RawData", "CollectedDataFinal.csv"))
+
+# view the columns/variables of the collected dataset data frame  and their types 
+glimpse(CollectedData) 
+```
+## To build a linker dataframe by creating two string vectors
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Building a linker data frame by creating two string vectors representing the different variable descriptions and the different variable types.
+
+variable_description <- c("The index column that allows us to link the data collected to the original ae_attendances data in the 'RawData' folder.", "The Organisation data service (ODS) code for the organisation.", "The month for this type of activity.", "The number of attendances that resulted in an admission to the emergency department.", "The consent from the end-user to process and share the data collected with the data capture tool.")
+print(variable_description)
+```
+
+
+## Variable types - to show the types of variables in the linker dataframe
+
+The dataset consisted of two quantitative variables (index and admissions) represented by "0" and three fixed values variables (org-code, period, and consent) represented by "1".
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Variable types
+# Use 0 to represent quantitative variable types and 1 to represent fixed values
+variable_type <- c(0, 1, 1, 0,1)
+print(variable_type)
+```
+
+## To construct a linker between the dataset collected with the data capture tool and the data dictionary
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Construct a link between the collected dataset and the data dictionary.
+linker<-build_linker(CollectedData, variable_description, variable_type)
+print(linker)
+```
+## To construct the dictionary and save the dictionary to the RawData folder
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# construct dictionary using the build_dict() function from the dataMeta
+CollectedData_DataDictionary <- build_dict(my.data = CollectedData, linker = linker, option_description = NULL, 
+prompt_varopts = FALSE)
+
+#View dictionary structure
+glimpse(CollectedData_DataDictionary)
+
+# To save the CollectedData_DataDictionary dataset to the 'RawData' folder
+write_csv(CollectedData_DataDictionary, here("RawData", "CollectedData_DataDictionary.csv"))
+```
+
+## To create a main_string for describing the dataset attributes
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+## Create main_string for describing the CollectedData data frame.
+main_string <- "This data describes the NHS England accident and emergency (A&E) admissions across emergency departments in England."
+
+main_string
+```
+
+## This is to incorporate the attributes as metadata to the collected dataset
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+## Incorporate attributes as metadata 
+complete_CollectedData <- incorporate_attr(my.data = CollectedData, data.dictionary = CollectedData_DataDictionary,
+main_string = main_string)
+
+#Change the author name
+attributes(complete_CollectedData)$author[1]<-"B210635"
+# complete_CollectedData
+
+#attributes of complete_CollectedData
+attributes(complete_CollectedData)
+```
+
+## This is to save the complete_CollectedData with attributes to the RawData folder
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+##Save the complete_CollectedData with attributes to the RawData folder
+save_it(complete_CollectedData, here("RawData", "complete_CollectedData"))
+```
+
+
+# **Data capture tool**
+```{r}
+# Link to the data capture tool
+# https://github.com/B210635/B210635_assessment/blob/master/IPynbScripts/Working%20with%20Data%20types%20and%20structures%20in%20Python%20and%20R%20Assessment%232%20B210635.ipynb 
+```
+
+The data capture tool was developed in Python using interactive jupyter widgets to collect the data. Widget is an intuitive feature consisting of graphical user interface elements, such as a button, dropdown menus, or textboxes to collect or input user data. The test dataset used for data collection consisted of eleven rows and four columns or variables with data types as follows: index (integer), org_code (string), period (date), and admission (integer). Because consent is crucial to ensure data protection compliance in line with data regulations standards, a boolean variable ‘consent’ was added to the data capture tool using a Boolean widget (checkbox widget) with values as ‘True’ or ‘False’. True corresponds to consent provided by the end-user to analyze and share the collect dataset. A datepicker widget was used to collect data for the period variable as date. The org_code variable was displayed as list and selection widgets were used to select the org_code value from the list. Because the admissions variable is an integer, the *'IntText widget'* was used to input the value. Eleven iterations were performed for each variable to collect the data captured by the Juypter widgets to an empty data frame. 
+
+
+
+
+
+
+
+
+
+
+
